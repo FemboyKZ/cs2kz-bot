@@ -21,7 +21,6 @@ const ERROR_CODES = {
   500: "Internal server error",
   503: "Service unavailable",
 };
-
 const COLORS = {
   RED: "#FF0000",
   GREEN: "#00FF00",
@@ -69,7 +68,7 @@ async function handlePagination(interaction, fetchParams, totalCount) {
   await interaction.deferReply();
 
   try {
-    const initialData = await cachedFetch(`${API_URL}/bans`, {
+    const initialData = await cachedFetch(`${API_URL}/servers`, {
       ...fetchParams,
       offset: 0,
       limit: ITEMS_PER_PAGE,
@@ -77,7 +76,7 @@ async function handlePagination(interaction, fetchParams, totalCount) {
 
     if (!initialData?.values?.length) {
       const embed = createBaseEmbed()
-        .setDescription("No bans found")
+        .setDescription("No servers found")
         .setColor(COLORS.RED);
       return interaction.editReply({ embeds: [embed] });
     }
@@ -87,9 +86,9 @@ async function handlePagination(interaction, fetchParams, totalCount) {
 
     const embed = createBaseEmbed()
       .setDescription(
-        `Page ${currentPage}/${totalPages} (Total ${totalCount} bans)`,
+        `Page ${currentPage}/${totalPages} (Total ${totalCount} servers)`,
       )
-      .addFields(createBanFields(initialData.values));
+      .addFields(createServerFields(initialData.values));
 
     const buttons = createPaginationButtons(totalPages, currentPage);
     const message = await interaction.editReply({
@@ -140,7 +139,7 @@ function setupCollector(message, user, fetchParams, totalCount) {
       i.customId === "next_page" ? currentPage + 1 : currentPage - 1;
 
     try {
-      const newData = await cachedFetch(`${API_URL}/bans`, {
+      const newData = await cachedFetch(`${API_URL}/servers`, {
         ...fetchParams,
         offset: (newPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
@@ -149,9 +148,9 @@ function setupCollector(message, user, fetchParams, totalCount) {
       const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
       const embed = createBaseEmbed()
         .setDescription(
-          `Page ${newPage}/${totalPages} (Total ${totalCount} bans)`,
+          `Page ${newPage}/${totalPages} (Total ${totalCount} servers)`,
         )
-        .addFields(createBanFields(newData.values));
+        .addFields(createServerFields(newData.values));
 
       const buttons = createPaginationButtons(totalPages, newPage);
       await i.editReply({ embeds: [embed], components: [buttons] });
@@ -170,20 +169,19 @@ function setupCollector(message, user, fetchParams, totalCount) {
 
 function createBaseEmbed() {
   return new EmbedBuilder()
-    .setTitle("CS2KZ Bans")
-    .setColor(COLORS.ORANGE)
+    .setTitle("CS2KZ Servers")
+    .setColor(COLORS.BLUE)
     .setFooter({ text: "CS2KZ API | Data updates every 30 seconds" });
 }
 
-function createBanFields(bans) {
-  return bans.map((ban) => ({
-    name: ban.player.name,
+function createServerFields(servers) {
+  return servers.map((server) => ({
+    name: server.name,
     value: [
-      `**ID:** ${ban.player.id}`,
-      `**Reason:** ${ban.reason}`,
-      `**Banned by:** ${ban.banned_by.type} (${ban.banned_by.id})`,
-      `**Date:** ${new Date(ban.created_at).toLocaleDateString()}`,
-      `**Unban:** ${ban.unban || "N/A"}`,
+      `**ID:** ${server.id}`,
+      `**IP:Port:** ${server.host}:${server.port}`,
+      `**Owner:** ${server.owner.name} (${server.owner.id})`,
+      `**Approved:** ${new Date(server.approved_at).toLocaleDateString()}`,
     ].join("\n"),
     inline: true,
   }));
@@ -208,44 +206,39 @@ function handleInteractionError(interaction, error) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("bans")
-    .setDescription("List and browse CS2KZ bans, or search for a specific ban")
+    .setName("servers")
+    .setDescription(
+      "List and browse CS2KZ servers, or search for a specific server",
+    )
     .addStringOption((option) =>
       option
         .setName("search")
-        .setDescription("Search by ban ID")
+        .setDescription("Search by server name or ID")
         .setRequired(false),
     )
     .addStringOption((option) =>
       option
-        .setName("player")
-        .setDescription("Filter by the player SteamID")
+        .setName("owner")
+        .setDescription("Filter by owner SteamID")
         .setRequired(false),
     )
     .addStringOption((option) =>
       option
-        .setName("issuer")
-        .setDescription("Filter by the issuer of the ban")
-        .setRequired(false),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("reason")
-        .setDescription(
-          "Filter by the reason of the ban (macro, auto-bhop, auto-strafe, etc.)",
-        )
+        .setName("host")
+        .setDescription("Filter by host IP or domain")
         .setRequired(false),
     ),
   async execute(interaction) {
     const search = interaction.options.getString("search");
-    const player = interaction.options.getString("player");
-    const issuer = interaction.options.getString("issuer");
-    const reason = interaction.options.getString("reason");
+    const owner = interaction.options.getString("owner");
+    const host = interaction.options.getString("host");
 
     if (search && /\d+/.test(search)) {
       try {
-        const ban = await cachedFetch(`${API_URL}/bans/${search}`);
-        const embed = createBaseEmbed().addFields(createBanFields([ban]));
+        const server = await cachedFetch(`${API_URL}/servers/${search}`);
+        const embed = createBaseEmbed()
+          .addFields(createServerFields([server]))
+          .setColor(COLORS.BLUE);
 
         return interaction.reply({ embeds: [embed] });
       } catch (error) {
@@ -254,13 +247,12 @@ module.exports = {
     }
 
     const fetchParams = cleanParams({
-      player: player || undefined,
-      banned_by: issuer || undefined,
-      reason: reason || undefined,
+      owned_by: owner,
+      host: host,
     });
 
     try {
-      const countData = await cachedFetch(`${API_URL}/bans`, fetchParams);
+      const countData = await cachedFetch(`${API_URL}/servers`, fetchParams);
       await handlePagination(interaction, fetchParams, countData.total);
     } catch (error) {
       handleInteractionError(interaction, error);
