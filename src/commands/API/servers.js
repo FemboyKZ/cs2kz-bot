@@ -64,61 +64,60 @@ function cleanParams(params) {
   );
 }
 
-async function handlePagination(interaction, fetchParams, currentPage = 1) {
+async function handlePagination(interaction, fetchParams, totalCount) {
   await interaction.deferReply();
 
   try {
-    const response = await cachedFetch(`${API_URL}/servers`, {
+    const initialData = await cachedFetch(`${API_URL}/servers`, {
       ...fetchParams,
-      offset: (currentPage - 1) * ITEMS_PER_PAGE,
+      offset: 0,
       limit: ITEMS_PER_PAGE,
     });
 
-    const results = response.values || [];
-    const hasMore = results.length === ITEMS_PER_PAGE;
-
-    if (results.length === 0) {
-      if (currentPage === 1) {
-        const embed = createBaseEmbed()
-          .setDescription("No servers found for these filters")
-          .setColor(COLORS.RED);
-        return interaction.editReply({ embeds: [embed] });
-      }
-      return handlePagination(interaction, fetchParams, currentPage - 1);
+    if (!initialData?.values?.length) {
+      const embed = createBaseEmbed()
+        .setDescription("No servers found")
+        .setColor(COLORS.RED);
+      return interaction.editReply({ embeds: [embed] });
     }
 
-    const resultsCount = (currentPage - 1) * ITEMS_PER_PAGE + results.length;
-    const pageDisplay = hasMore ? `${currentPage}+` : currentPage.toString();
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+    let currentPage = 1;
 
     const embed = createBaseEmbed()
-      .setDescription(`Page ${pageDisplay} (Showing ${resultsCount} servers)`)
-      .addFields(createServerFields(results));
+      .setDescription(
+        `Page ${currentPage}/${totalPages} (Total ${totalCount} servers)`,
+      )
+      .addFields(createServerFields(initialData.values));
 
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("prev_page")
-        .setLabel("Previous")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(currentPage === 1),
-      new ButtonBuilder()
-        .setCustomId("next_page")
-        .setLabel("Next")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!hasMore),
-    );
-
+    const buttons = createPaginationButtons(totalPages, currentPage);
     const message = await interaction.editReply({
       embeds: [embed],
       components: [buttons],
     });
 
-    setupCollector(message, interaction.user, fetchParams);
+    setupCollector(message, interaction.user, fetchParams, totalCount);
   } catch (error) {
     handleInteractionError(interaction, error);
   }
 }
 
-function setupCollector(message, user, fetchParams) {
+function createPaginationButtons(totalPages, currentPage) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("prev_page")
+      .setLabel("Previous")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(currentPage === 1),
+    new ButtonBuilder()
+      .setCustomId("next_page")
+      .setLabel("Next")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(currentPage >= totalPages),
+  );
+}
+
+function setupCollector(message, user, fetchParams, totalCount) {
   const collector = message.createMessageComponentCollector({
     time: 300000,
     dispose: true,
@@ -134,12 +133,31 @@ function setupCollector(message, user, fetchParams) {
 
     await i.deferUpdate();
     const currentPage = parseInt(
-      i.message.embeds[0].description.match(/Page (\d+)\+?/)[1],
+      i.message.embeds[0].description.match(/Page (\d+)/)[1],
     );
     const newPage =
       i.customId === "next_page" ? currentPage + 1 : currentPage - 1;
 
-    await handlePagination(i, fetchParams, newPage);
+    try {
+      const newData = await cachedFetch(`${API_URL}/servers`, {
+        ...fetchParams,
+        offset: (newPage - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+      });
+
+      const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+      const embed = createBaseEmbed()
+        .setDescription(
+          `Page ${newPage}/${totalPages} (Total ${totalCount} servers)`,
+        )
+        .addFields(createServerFields(newData.values));
+
+      const buttons = createPaginationButtons(totalPages, newPage);
+      await i.editReply({ embeds: [embed], components: [buttons] });
+    } catch (error) {
+      handleInteractionError(i, error);
+      collector.stop();
+    }
   });
 
   collector.on("end", () => {
