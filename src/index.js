@@ -44,7 +44,7 @@ const client = new Client({
     Partials.ThreadMember,
     Partials.User,
   ],
-  presence: { status: "online", game: { name: ":3" } },
+  presence: { status: "online", game: { name: "Kreedz" } },
 });
 exports.client = client;
 
@@ -54,7 +54,6 @@ client.invites = new Collection();
 
 const utilsPath = path.join(__dirname, "utils");
 require(path.join(utilsPath, "handleConsole.js"));
-require(path.join(utilsPath, "syncGuildData.js"))(client);
 
 client.gracefulShutdown = async function () {
   try {

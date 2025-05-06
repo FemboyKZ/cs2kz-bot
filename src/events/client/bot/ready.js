@@ -1,4 +1,4 @@
-const { Events, PermissionsBitField, Collection } = require("discord.js");
+const { Events } = require("discord.js");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
@@ -39,76 +39,11 @@ async function connectToDatabase(client) {
   }
 }
 
-/**
- * Syncs guild data with the database
- * @param {Client} client Discord client instance
- */
-async function syncGuildData(client) {
-  try {
-    console.log("Starting guild data sync...");
-
-    for (const [guildId, guild] of client.guilds.cache) {
-      try {
-        await client.syncGuildData(guild);
-        console.log(`Synced data for: ${guild.name} (${guildId})`);
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Rate limit buffer
-      } catch (guildError) {
-        console.error(`Failed to sync ${guild.name} (${guildId}):`, guildError);
-      }
-    }
-
-    console.log("Guild data sync complete");
-  } catch (error) {
-    console.error("Global guild sync failed:", error);
-  }
-}
-
-/**
- * Initializes invite tracking system
- * @param {Client} client Discord client instance
- */
-async function initializeInvites(client) {
-  try {
-    console.log("Initializing invite tracking...");
-    client.invites = new Collection();
-
-    for (const [guildId, guild] of client.guilds.cache) {
-      try {
-        const clientMember = await guild.members.fetch(client.user.id);
-
-        if (
-          !clientMember.permissions.has(PermissionsBitField.Flags.ManageGuild)
-        ) {
-          console.log(
-            `Skipping invites for ${guild.name} (missing permissions)`,
-          );
-          continue;
-        }
-
-        const invites = await guild.invites.fetch().catch(console.error);
-        if (!invites) continue;
-
-        client.invites.set(
-          guildId,
-          new Collection(invites.map((invite) => [invite.code, invite.uses])),
-        );
-        console.log(`Loaded ${invites.size} invites for ${guild.name}`);
-      } catch (guildError) {
-        console.error(`Failed to process ${guild.name}:`, guildError);
-      }
-    }
-  } catch (error) {
-    console.error("Invite initialization failed:", error);
-  }
-}
-
 module.exports = {
   name: Events.ClientReady,
   async execute(client) {
     console.log(`Client ready as ${client.user.tag} (${client.user.id})`);
 
     await connectToDatabase(client);
-    await syncGuildData(client);
-    await initializeInvites(client);
   },
 };
