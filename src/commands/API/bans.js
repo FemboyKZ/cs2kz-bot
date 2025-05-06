@@ -27,7 +27,7 @@ function createBanFields(bans) {
   return bans.slice(0, ITEMS_PER_PAGE).map((ban) => ({
     name: ban.player.name,
     value: [
-      `**SteamID:** ${ban.player.id}`,
+      `**Player:** ${ban.player.name} (${ban.player.id})`,
       `**Reason:** ${ban.reason}`,
       `**Banned by:** ${ban.banned_by.type} (${ban.banned_by.id})`,
       `**Date:** ${new Date(ban.created_at).toLocaleDateString()}`,
@@ -57,51 +57,36 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setTitle("CS2KZ Bans")
-        .setFooter({ text: "CS2KZ API" })
-        .setTimestamp();
+        .setFooter({ text: "CS2KZ API" });
 
       try {
         const response = await axios.request(options);
         if (response.status === 200) {
           embed
             .setDescription("User is banned!")
-            .setColor("Red")
-            .addFields(
-              {
-                name: "User",
-                value:
-                  response.data.played.name + " - " + response.data.played.id,
-              },
-              {
-                name: "Reason",
-                value: response.data.reason || "No reason provided",
-              },
-              {
-                name: "Banned by",
-                value:
-                  response.data.banned_by.type +
-                  " - " +
-                  response.data.banned_by.id,
-              },
-              {
-                name: "Date",
-                value: new Date(response.data.created_at).toLocaleDateString(),
-              },
-            );
+            .setColor("#FF0000")
+            .addFields({
+              value: [
+                `**Player:** ${response.data.player.name} (${response.data.player.id})`,
+                `**Reason:** ${response.data.reason}`,
+                `**Banned by:** ${response.data.banned_by.type} (${response.data.banned_by.id})`,
+                `**Date:** ${new Date(response.data.created_at).toLocaleDateString()}`,
+              ].join("\n"),
+            });
           await interaction.reply({ embeds: [embed], ephemeral: false });
         } else if (response.status === 404) {
-          embed.setDescription("API Request denied!").setColor("Orange");
+          embed.setDescription("API Request denied!").setColor("#FFA500");
           await interaction.reply({ embeds: [embed], ephemeral: true });
         } else {
           embed
-            .setDescription("No bans found matching steamID: " + steamID)
-            .setColor("Green");
+            .setDescription("No bans found matching steamID: `" + steamID + "`")
+            .setColor("#008000");
           await interaction.reply({ embeds: [embed], ephemeral: false });
         }
       } catch (error) {
         embed
           .setDescription("Something went wrong while executing the command!")
-          .setColor("Orange");
+          .setColor("#FFA500");
         await interaction.reply({ embeds: [embed], ephemeral: true });
         console.error(error);
       }
@@ -110,20 +95,23 @@ module.exports = {
 
       const initialData = await fetchBansPage(0);
       if (!initialData || !initialData.values.length) {
-        return interaction.editReply("No active bans found.");
+        const embed = new EmbedBuilder()
+          .setTitle("CS2KZ Bans")
+          .setDescription("No active bans found.")
+          .setColor("#FF0000");
+        return interaction.editReply({ embeds: [embed] });
       }
 
       let currentPage = 1;
       const totalPages = Math.ceil(initialData.total / ITEMS_PER_PAGE);
 
       const embed = new EmbedBuilder()
-        .setTitle("CS2KZ Ban List")
+        .setTitle("CS2KZ Bans")
         .setDescription(
           `Page ${currentPage}/${totalPages} (Total ${initialData.total} bans)`,
         )
         .addFields(createBanFields(initialData.values))
-        .setColor("#FF0000")
-        .setFooter({ text: "Use buttons to navigate between pages" });
+        .setColor("#FF0000");
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
