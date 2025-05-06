@@ -64,31 +64,34 @@ function cleanParams(params) {
   );
 }
 
-async function handlePagination(interaction, fetchParams, totalCount) {
+async function handlePagination(interaction, fetchParams, initialPage = 1) {
   await interaction.deferReply();
 
   try {
-    const initialData = await cachedFetch(`${API_URL}/servers`, {
+    const countData = await cachedFetch(`${API_URL}/servers`, fetchParams);
+    const totalCount = countData.total;
+
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+    let currentPage = Math.min(initialPage, totalPages);
+
+    const pageData = await cachedFetch(`${API_URL}/servers`, {
       ...fetchParams,
-      offset: 0,
+      offset: (currentPage - 1) * ITEMS_PER_PAGE,
       limit: ITEMS_PER_PAGE,
     });
 
-    if (!initialData?.values?.length) {
+    if (!pageData?.values?.length) {
       const embed = createBaseEmbed()
-        .setDescription("No servers found")
+        .setDescription("No servers found for these filters")
         .setColor(COLORS.RED);
       return interaction.editReply({ embeds: [embed] });
     }
 
-    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-    let currentPage = 1;
-
     const embed = createBaseEmbed()
       .setDescription(
-        `Page ${currentPage}/${totalPages} (Total ${totalCount} servers)`,
+        `Page ${currentPage}/${totalPages} (${totalCount} servers)`,
       )
-      .addFields(createServerFields(initialData.values));
+      .addFields(createServerFields(pageData.values));
 
     const buttons = createPaginationButtons(totalPages, currentPage);
     const message = await interaction.editReply({
@@ -132,32 +135,25 @@ function setupCollector(message, user, fetchParams, totalCount) {
     }
 
     await i.deferUpdate();
-    const currentPage = parseInt(
-      i.message.embeds[0].description.match(/Page (\d+)/)[1],
-    );
-    const newPage =
-      i.customId === "next_page" ? currentPage + 1 : currentPage - 1;
+    const embedDescription = i.message.embeds[0].description;
+    const currentPage = parseInt(embedDescription.match(/Page (\d+)/)[1]);
+    const totalPages = parseInt(embedDescription.match(/\/(\d+)/)[1]);
 
-    try {
-      const newData = await cachedFetch(`${API_URL}/servers`, {
-        ...fetchParams,
-        offset: (newPage - 1) * ITEMS_PER_PAGE,
-        limit: ITEMS_PER_PAGE,
-      });
-
-      const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-      const embed = createBaseEmbed()
-        .setDescription(
-          `Page ${newPage}/${totalPages} (Total ${totalCount} servers)`,
-        )
-        .addFields(createServerFields(newData.values));
-
-      const buttons = createPaginationButtons(totalPages, newPage);
-      await i.editReply({ embeds: [embed], components: [buttons] });
-    } catch (error) {
-      handleInteractionError(i, error);
-      collector.stop();
+    let newPage = currentPage;
+    if (i.customId === "next_page") {
+      newPage = Math.min(currentPage + 1, totalPages);
+    } else {
+      newPage = Math.max(currentPage - 1, 1);
     }
+
+    const newCountData = await cachedFetch(`${API_URL}/servers`, fetchParams);
+    const newTotalPages = Math.ceil(newCountData.total / ITEMS_PER_PAGE) || 1;
+
+    if (newPage > newTotalPages) {
+      newPage = newTotalPages;
+    }
+
+    await handlePagination(i, fetchParams, newPage);
   });
 
   collector.on("end", () => {
@@ -251,8 +247,7 @@ module.exports = {
     });
 
     try {
-      const countData = await cachedFetch(`${API_URL}/servers`, fetchParams);
-      await handlePagination(interaction, fetchParams, countData.total);
+      await handlePagination(interaction, fetchParams, 1);
     } catch (error) {
       handleInteractionError(interaction, error);
     }
