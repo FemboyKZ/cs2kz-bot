@@ -1,10 +1,10 @@
 {
-  "name": "fkz-bot",
-  "version": "1.7.168",
+  "name": "cs2kz-bot",
+  "version": "0.0.1",
   "main": "src/index.js",
   "author": "jvnipers",
   "license": "GPL-3.0-only",
-  "description": "Discord Bot for managing FKZ Discord Server, FKZ Dedicated Server and more.",
+  "description": "CS2KZ Bot",
   "scripts": {
     "start": "node --no-warnings src/index.js"
   },
