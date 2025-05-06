@@ -77,7 +77,7 @@ async function handlePagination(interaction, fetchParams, totalCount) {
 
     if (!initialData?.values?.length) {
       const embed = createBaseEmbed()
-        .setDescription("No bans found")
+        .setDescription("No Bans found")
         .setColor(COLORS.RED);
       return interaction.editReply({ embeds: [embed] });
     }
@@ -87,9 +87,9 @@ async function handlePagination(interaction, fetchParams, totalCount) {
 
     const embed = createBaseEmbed()
       .setDescription(
-        `Page ${currentPage}/${totalPages} (Total ${totalCount} bans)`,
+        `Page ${currentPage}/${totalPages} (Total ${totalCount} Bans)`,
       )
-      .addFields(createBanFields(initialData.values));
+      .addFields(createFields(initialData.values));
 
     const buttons = createPaginationButtons(totalPages, currentPage);
     const message = await interaction.editReply({
@@ -149,9 +149,9 @@ function setupCollector(message, user, fetchParams, totalCount) {
       const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
       const embed = createBaseEmbed()
         .setDescription(
-          `Page ${newPage}/${totalPages} (Total ${totalCount} bans)`,
+          `Page ${newPage}/${totalPages} (Total ${totalCount} Bans)`,
         )
-        .addFields(createBanFields(newData.values));
+        .addFields(createFields(newData.values));
 
       const buttons = createPaginationButtons(totalPages, newPage);
       await i.editReply({ embeds: [embed], components: [buttons] });
@@ -175,7 +175,7 @@ function createBaseEmbed() {
     .setFooter({ text: "CS2KZ API | Data updates every 30 seconds" });
 }
 
-function createBanFields(bans) {
+function createFields(bans) {
   return bans.map((ban) => ({
     name: `#${ban.id} ${ban.player.name}`,
     value: [
@@ -209,7 +209,7 @@ function handleInteractionError(interaction, error) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("bans")
-    .setDescription("List and browse CS2KZ bans, or search for a specific ban")
+    .setDescription("List and browse CS2KZ Bans, or search for a specific Ban")
     .addStringOption((option) =>
       option
         .setName("search")
@@ -225,7 +225,7 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("issuer")
-        .setDescription("Filter by the issuer of the ban")
+        .setDescription("Filter by the ban issuer's SteamID")
         .setRequired(false),
     )
     .addStringOption((option) =>
@@ -245,7 +245,7 @@ module.exports = {
     if (search && /\d+/.test(search)) {
       try {
         const ban = await cachedFetch(`${API_URL}/bans/${search}`);
-        const embed = createBaseEmbed().addFields(createBanFields([ban]));
+        const embed = createBaseEmbed().addFields(createFields([ban]));
 
         return interaction.reply({ embeds: [embed] });
       } catch (error) {

@@ -77,7 +77,7 @@ async function handlePagination(interaction, fetchParams, totalCount) {
 
     if (!initialData?.values?.length) {
       const embed = createBaseEmbed()
-        .setDescription("No servers found")
+        .setDescription("No Servers found")
         .setColor(COLORS.RED);
       return interaction.editReply({ embeds: [embed] });
     }
@@ -87,9 +87,9 @@ async function handlePagination(interaction, fetchParams, totalCount) {
 
     const embed = createBaseEmbed()
       .setDescription(
-        `Page ${currentPage}/${totalPages} (Total ${totalCount} servers)`,
+        `Page ${currentPage}/${totalPages} (Total ${totalCount} Servers)`,
       )
-      .addFields(createServerFields(initialData.values));
+      .addFields(createFields(initialData.values));
 
     const buttons = createPaginationButtons(totalPages, currentPage);
     const message = await interaction.editReply({
@@ -149,9 +149,9 @@ function setupCollector(message, user, fetchParams, totalCount) {
       const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
       const embed = createBaseEmbed()
         .setDescription(
-          `Page ${newPage}/${totalPages} (Total ${totalCount} servers)`,
+          `Page ${newPage}/${totalPages} (Total ${totalCount} Servers)`,
         )
-        .addFields(createServerFields(newData.values));
+        .addFields(createFields(newData.values));
 
       const buttons = createPaginationButtons(totalPages, newPage);
       await i.editReply({ embeds: [embed], components: [buttons] });
@@ -175,7 +175,7 @@ function createBaseEmbed() {
     .setFooter({ text: "CS2KZ API | Data updates every 30 seconds" });
 }
 
-function createServerFields(servers) {
+function createFields(servers) {
   return servers.map((server) => ({
     name: `#${server.id} ${server.name}`,
     value: [
@@ -208,18 +208,18 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("servers")
     .setDescription(
-      "List and browse CS2KZ servers, or search for a specific server",
+      "List and browse CS2KZ Servers, or search for a specific Server",
     )
     .addStringOption((option) =>
       option
         .setName("search")
-        .setDescription("Search by the server Name or ID")
+        .setDescription("Search by the Server Name or ID")
         .setRequired(false),
     )
     .addStringOption((option) =>
       option
         .setName("owner")
-        .setDescription("Filter by the owner's SteamID")
+        .setDescription("Filter by the Server owner's SteamID")
         .setRequired(false),
     )
     .addStringOption((option) =>
@@ -237,7 +237,7 @@ module.exports = {
       try {
         const server = await cachedFetch(`${API_URL}/servers/${search}`);
         const embed = createBaseEmbed()
-          .addFields(createServerFields([server]))
+          .addFields(createFields([server]))
           .setColor(COLORS.BLUE);
 
         return interaction.reply({ embeds: [embed] });
