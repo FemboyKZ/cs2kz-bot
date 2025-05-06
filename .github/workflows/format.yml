@@ -2,14 +2,14 @@ name: Code Quality Checks and formatting
 
 on:
   push:
-    branches: ["dev/main", "dev/*", "feat/*", "refactor/*", "fix/*", "test/*"]
+    branches: ["main"]
     paths-ignore:
       - LICENSE
       - README.md
       - .gitignore
       - ".github/*"
   pull_request:
-    branches: ["dev/main", "dev/*", "feat/*", "refactor/*", "fix/*", "test/*"]
+    branches: ["main"]
     paths-ignore:
       - LICENSE
       - README.md
