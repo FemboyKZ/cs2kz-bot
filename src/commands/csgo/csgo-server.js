@@ -37,6 +37,7 @@ const resolveServerConfig = (serverId) => {
     return Object.values(config).map((server) => ({
       ip: server.ip,
       port: server.port,
+      name: server.name,
       type: server.type,
       user: server.user,
       id: server.id,
@@ -50,6 +51,7 @@ const resolveServerConfig = (serverId) => {
       {
         ip: server.ip,
         port: server.port,
+        name: server.name,
         type: server.type,
         user: server.user,
         id: server.id,
@@ -147,15 +149,15 @@ module.exports = {
 
   async execute(interaction) {
     try {
-      const role = await interaction.guild.roles.cache.get(MANAGER_ROLE);
+      const role = await interaction.guild.roles.fetch(MANAGER_ROLE);
       if (!role) {
         console.log("Manager role not found in guild", MANAGER_ROLE);
       }
       if (
         !interaction.member.permissions.has(
           PermissionFlagsBits.Administrator,
-        ) ||
-        !interaction.member.roles.cache.has(role)
+        ) &&
+        !interaction.member.roles.cache.has(MANAGER_ROLE)
       ) {
         return await interaction.reply({
           content: "You don't have perms to use this command.",
@@ -228,13 +230,13 @@ module.exports = {
       if (successful.length > 0) {
         description += `\n\nSuccessful:`;
         successful.forEach((s) => {
-          description += `\n- ${s.server.id} (${s.server.ip}:${s.server.port})`;
+          description += `\n\`${s.server.name} (${s.server.ip}:${s.server.port})\``;
         });
       }
       if (failed.length > 0) {
         description += `\n\nFailed:`;
         failed.forEach((f) => {
-          description += `\n- ${f.server.id}: ${f.error}`;
+          description += `\n\`${f.server.name}: ${f.error}\``;
         });
       }
 
