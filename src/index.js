@@ -6,31 +6,15 @@ const {
 } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
-const mongoose = require("mongoose");
 const process = require("node:process");
 
 require("dotenv").config();
 
 const client = new Client({
   intents: [
-    GatewayIntentBits.AutoModerationConfiguration,
-    GatewayIntentBits.AutoModerationExecution,
-    GatewayIntentBits.DirectMessagePolls,
-    GatewayIntentBits.DirectMessageReactions,
-    GatewayIntentBits.DirectMessageTyping,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildExpressions,
-    GatewayIntentBits.GuildIntegrations,
-    GatewayIntentBits.GuildInvites,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessagePolls,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildMessageTyping,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildScheduledEvents,
-    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildWebhooks,
     GatewayIntentBits.Guilds,
     GatewayIntentBits.MessageContent,
@@ -38,9 +22,7 @@ const client = new Client({
   partials: [
     Partials.Channel,
     Partials.GuildMember,
-    Partials.GuildScheduledEvent,
     Partials.Message,
-    Partials.Reaction,
     Partials.ThreadMember,
     Partials.User,
   ],
@@ -50,19 +32,11 @@ exports.client = client;
 
 client.commands = new Collection();
 //client.cooldowns = new Collection();
-client.invites = new Collection();
 
 const utilsPath = path.join(__dirname, "utils");
 require(path.join(utilsPath, "handleConsole.js"));
 
 client.gracefulShutdown = async function () {
-  try {
-    await mongoose.connection.close();
-    console.log("Database connection closed successfully.");
-  } catch (error) {
-    console.error("Error closing database connection:", error);
-  }
-
   return process.exit(0);
 };
 
@@ -88,7 +62,6 @@ const eventsPath = path.join(__dirname, "events");
     await client.handleEvents(path.join(eventsPath, "client"));
     await client.handleProcessEvents(path.join(eventsPath, "process"));
     await client.handleRestEvents(path.join(eventsPath, "rest"));
-    await client.handleMongoEvents(path.join(eventsPath, "mongo"));
     await client.handleCommands(path.join(__dirname, "commands"));
   } catch (error) {
     console.error("Error starting the bot:", error);
