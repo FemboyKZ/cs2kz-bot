@@ -64,63 +64,61 @@ function cleanParams(params) {
   );
 }
 
-async function handlePagination(interaction, fetchParams, initialPage = 1) {
+async function handlePagination(interaction, fetchParams, currentPage = 1) {
   await interaction.deferReply();
 
   try {
-    const countData = await cachedFetch(`${API_URL}/servers`, fetchParams);
-    const totalCount = countData.total;
-
-    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-    let currentPage = Math.min(initialPage, totalPages);
-
-    const pageData = await cachedFetch(`${API_URL}/servers`, {
+    const response = await cachedFetch(`${API_URL}/servers`, {
       ...fetchParams,
       offset: (currentPage - 1) * ITEMS_PER_PAGE,
       limit: ITEMS_PER_PAGE,
     });
 
-    if (!pageData?.values?.length) {
-      const embed = createBaseEmbed()
-        .setDescription("No servers found for these filters")
-        .setColor(COLORS.RED);
-      return interaction.editReply({ embeds: [embed] });
+    const results = response.values || [];
+    const hasMore = results.length === ITEMS_PER_PAGE;
+
+    if (results.length === 0) {
+      if (currentPage === 1) {
+        const embed = createBaseEmbed()
+          .setDescription("No servers found for these filters")
+          .setColor(COLORS.RED);
+        return interaction.editReply({ embeds: [embed] });
+      }
+      return handlePagination(interaction, fetchParams, currentPage - 1);
     }
 
-    const embed = createBaseEmbed()
-      .setDescription(
-        `Page ${currentPage}/${totalPages} (${totalCount} servers)`,
-      )
-      .addFields(createServerFields(pageData.values));
+    const resultsCount = (currentPage - 1) * ITEMS_PER_PAGE + results.length;
+    const pageDisplay = hasMore ? `${currentPage}+` : currentPage.toString();
 
-    const buttons = createPaginationButtons(totalPages, currentPage);
+    const embed = createBaseEmbed()
+      .setDescription(`Page ${pageDisplay} (Showing ${resultsCount} servers)`)
+      .addFields(createServerFields(results));
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("prev_page")
+        .setLabel("Previous")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(currentPage === 1),
+      new ButtonBuilder()
+        .setCustomId("next_page")
+        .setLabel("Next")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!hasMore),
+    );
+
     const message = await interaction.editReply({
       embeds: [embed],
       components: [buttons],
     });
 
-    setupCollector(message, interaction.user, fetchParams, totalCount);
+    setupCollector(message, interaction.user, fetchParams);
   } catch (error) {
     handleInteractionError(interaction, error);
   }
 }
 
-function createPaginationButtons(totalPages, currentPage) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("prev_page")
-      .setLabel("Previous")
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(currentPage === 1),
-    new ButtonBuilder()
-      .setCustomId("next_page")
-      .setLabel("Next")
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(currentPage >= totalPages),
-  );
-}
-
-function setupCollector(message, user, fetchParams, totalCount) {
+function setupCollector(message, user, fetchParams) {
   const collector = message.createMessageComponentCollector({
     time: 300000,
     dispose: true,
@@ -135,23 +133,11 @@ function setupCollector(message, user, fetchParams, totalCount) {
     }
 
     await i.deferUpdate();
-    const embedDescription = i.message.embeds[0].description;
-    const currentPage = parseInt(embedDescription.match(/Page (\d+)/)[1]);
-    const totalPages = parseInt(embedDescription.match(/\/(\d+)/)[1]);
-
-    let newPage = currentPage;
-    if (i.customId === "next_page") {
-      newPage = Math.min(currentPage + 1, totalPages);
-    } else {
-      newPage = Math.max(currentPage - 1, 1);
-    }
-
-    const newCountData = await cachedFetch(`${API_URL}/servers`, fetchParams);
-    const newTotalPages = Math.ceil(newCountData.total / ITEMS_PER_PAGE) || 1;
-
-    if (newPage > newTotalPages) {
-      newPage = newTotalPages;
-    }
+    const currentPage = parseInt(
+      i.message.embeds[0].description.match(/Page (\d+)\+?/)[1],
+    );
+    const newPage =
+      i.customId === "next_page" ? currentPage + 1 : currentPage - 1;
 
     await handlePagination(i, fetchParams, newPage);
   });
