@@ -9,7 +9,7 @@ const axios = require("axios");
 require("dotenv").config();
 
 const API_URL = process.env.API_URL || "https://api.cs2kz.org";
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 async function fetchBansPage(offset = 0) {
   try {
