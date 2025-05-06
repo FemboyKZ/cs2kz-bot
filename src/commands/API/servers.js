@@ -21,6 +21,7 @@ const ERROR_CODES = {
   500: "Internal server error",
   503: "Service unavailable",
 };
+
 const COLORS = {
   RED: "#FF0000",
   GREEN: "#00FF00",
@@ -246,12 +247,13 @@ module.exports = {
     }
 
     const fetchParams = cleanParams({
-      owned_by: owner,
-      host: host,
+      owned_by: owner || undefined,
+      host: host || undefined,
     });
 
     try {
-      await handlePagination(interaction, fetchParams, 1);
+      const count = await cachedFetch(`${API_URL}/servers`, fetchParams);
+      await handlePagination(interaction, fetchParams, count.values.length);
     } catch (error) {
       handleInteractionError(interaction, error);
     }

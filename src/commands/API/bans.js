@@ -260,8 +260,8 @@ module.exports = {
     });
 
     try {
-      const countData = await cachedFetch(`${API_URL}/bans`, fetchParams);
-      await handlePagination(interaction, fetchParams, countData.total);
+      const count = await cachedFetch(`${API_URL}/bans`, fetchParams);
+      await handlePagination(interaction, fetchParams, count.values.length);
     } catch (error) {
       handleInteractionError(interaction, error);
     }
