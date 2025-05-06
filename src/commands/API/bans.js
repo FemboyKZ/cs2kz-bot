@@ -177,15 +177,15 @@ function createBaseEmbed() {
 
 function createBanFields(bans) {
   return bans.map((ban) => ({
-    name: ban.player.name,
+    name: `#${ban.id} ${ban.player.name}`,
     value: [
-      `**ID:** ${ban.player.id}`,
+      `**SteamID:** ${ban.player.id}`,
       `**Reason:** ${ban.reason}`,
       `**Banned by:** ${ban.banned_by.type} (${ban.banned_by.id})`,
       `**Date:** ${new Date(ban.created_at).toLocaleDateString()}`,
       `**Unban:** ${ban.unban || "N/A"}`,
     ].join("\n"),
-    inline: true,
+    inline: false,
   }));
 }
 

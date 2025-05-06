@@ -176,14 +176,13 @@ function createBaseEmbed() {
 
 function createServerFields(servers) {
   return servers.map((server) => ({
-    name: server.name,
+    name: `#${server.id} ${server.name}`,
     value: [
-      `**ID:** ${server.id}`,
       `**IP:Port:** ${server.host}:${server.port}`,
       `**Owner:** ${server.owner.name} (${server.owner.id})`,
       `**Approved:** ${new Date(server.approved_at).toLocaleDateString()}`,
     ].join("\n"),
-    inline: true,
+    inline: false,
   }));
 }
 
