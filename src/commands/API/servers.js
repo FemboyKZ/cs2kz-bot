@@ -213,19 +213,19 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("search")
-        .setDescription("Search by server name or ID")
+        .setDescription("Search by the server Name or ID")
         .setRequired(false),
     )
     .addStringOption((option) =>
       option
         .setName("owner")
-        .setDescription("Filter by owner SteamID")
+        .setDescription("Filter by the owner's SteamID")
         .setRequired(false),
     )
     .addStringOption((option) =>
       option
         .setName("host")
-        .setDescription("Filter by host IP or domain")
+        .setDescription("Filter by the host IP or domain")
         .setRequired(false),
     ),
   async execute(interaction) {
