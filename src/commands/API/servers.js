@@ -52,7 +52,14 @@ const cachedFetch = async (url, params = {}) => {
     });
     return response.data;
   } catch (error) {
-    console.error("API Error:", error.message);
+    console.error(
+      "API Error:",
+      error.message,
+      "\nURL:",
+      url,
+      "Params:",
+      params,
+    );
     throw error;
   }
 };
