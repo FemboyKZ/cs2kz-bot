@@ -34,6 +34,13 @@ const COLORS = {
   BLACK: "#000000",
 };
 
+const VALID_PERMS = {
+  servers: "servers",
+  "user-permissions": "user-permissions",
+  "map-pool": "map-pool",
+  "player-bans": "player-bans",
+};
+
 const cachedFetch = async (url, params = {}) => {
   const cacheKey = JSON.stringify({ url, params });
   const cached = cache.get(cacheKey);
@@ -233,8 +240,7 @@ module.exports = {
     ),
   async execute(interaction) {
     const search = interaction.options.getString("search");
-
-    const [perms] = interaction.options.getString("perms");
+    const perms = interaction.options.getString("perms");
 
     if (search && /\d+/.test(search)) {
       try {
@@ -247,8 +253,21 @@ module.exports = {
       }
     }
 
+    if (perms && !Object.keys(VALID_PERMS).includes(perms)) {
+      const embed = createBaseEmbed()
+        .setDescription(
+          `Invalid permissions.\nValid options: ${Object.keys(VALID_PERMS).join(", ")}`,
+        )
+        .setColor(COLORS.RED);
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    const permArray = perms
+      ? perms.split(",").map((p) => VALID_PERMS[p])
+      : undefined;
+
     const fetchParams = cleanParams({
-      permissions: perms || undefined,
+      permissions: permArray,
     });
 
     try {
