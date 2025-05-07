@@ -70,22 +70,15 @@ const cachedFetch = async (url, params = {}) => {
   }
 };
 
-async function checkImageExists(url, timeout = 5000) {
+async function checkImageExists(url) {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    const response = await axios.head(url, {
-      signal: controller.signal,
-      validateStatus: (status) => status >= 200 && status < 400,
+    const response = await axios.get(url, {
+      responseType: "stream",
+      timeout: 5000,
     });
-
-    clearTimeout(timeoutId);
-    return true;
+    response.data.destroy();
+    return response.status === 200;
   } catch (error) {
-    if (error.code === "ECONNABORTED" || error.message.includes("aborted")) {
-      console.error("Request timed out");
-    }
     return false;
   }
 }
@@ -99,6 +92,9 @@ function cleanParams(params) {
 }
 
 function steamidTo64(steamid) {
+  if (!steamid.startsWith("STEAM_")) {
+    throw new Error("Invalid SteamID format");
+  }
   const STEAMID64_IDENT = 76561197960265728n;
   const parts = steamid.split(":");
 
@@ -138,13 +134,14 @@ async function handlePagination(interaction, fetchParams, totalCount) {
       )
       .addFields(createFields(initialData.values));
 
-    const image = `https://github.com/kzglobalteam/cs2kz-images/raw/public/medium/${initialData.values[0].name}/1.jpg`;
+    const image = `https://raw.githubusercontent.com/KZGlobalTeam/cs2kz-images/public/webp/full/${initialData?.values?.[0]?.name}/1.webp`;
     const checkImage = await checkImageExists(image);
     if (checkImage && checkImage === true) {
-      embed.setImage({
-        url: image,
-        size: 1024,
-      });
+      try {
+        embed.setImage(image);
+      } catch (error) {
+        console.error("Error setting image", error);
+      }
     }
 
     const buttons = createPaginationButtons(totalPages, currentPage);
@@ -209,13 +206,14 @@ function setupCollector(message, user, fetchParams, totalCount) {
         )
         .addFields(createFields(newData.values));
 
-      const image = `https://github.com/kzglobalteam/cs2kz-images/raw/public/medium/${newData.values[0].name}/1.jpg`;
+      const image = `https://raw.githubusercontent.com/KZGlobalTeam/cs2kz-images/public/webp/full/${newData?.values?.[0]?.name}/1.webp`;
       const checkImage = await checkImageExists(image);
       if (checkImage && checkImage === true) {
-        embed.setImage({
-          url: image,
-          size: 1024,
-        });
+        try {
+          embed.setImage(image);
+        } catch (error) {
+          console.error("Error setting image", error);
+        }
       }
 
       const buttons = createPaginationButtons(totalPages, newPage);
@@ -240,21 +238,37 @@ function createBaseEmbed() {
     .setFooter({ text: "CS2KZ API | Data updates every 30 seconds" });
 }
 
+function createMappersField(mappers) {
+  try {
+    return mappers
+      .map(
+        (mapper) =>
+          `[${mapper.name}](<https://cs2kz.org/profile/${mapper.id}>)`,
+      )
+      .join(", ");
+  } catch (error) {
+    console.log("Invalid mappers:", mappers, error);
+    return "N/A";
+  }
+}
+
+function createStateField(state, mapName) {
+  try {
+    return `[${STATES[state]}](<https://cs2kz.org/maps/${mapName}>)`;
+  } catch (error) {
+    console.log("Invalid state:", state, error);
+    return "N/A";
+  }
+}
+
 function createFields(maps) {
-  const mapperList = maps
-    .flatMap((map) => map.mappers)
-    .map(
-      (mapper) =>
-        `[${mapper.name}](<https://steamcommunity.com/profiles/${steamidTo64(mapper.id)}>)`,
-    )
-    .join(", ");
   return maps.map((map) => ({
     name: `#${map.id} ${map.name}`,
     value: [
-      `**Workshop ID:** ${map.workshop_id}`,
-      `**State**: ${STATES[map.state] || map.state}`,
+      `**Workshop:** [${map.workshop_id}](<https://steamcommunity.com/sharedfiles/filedetails/?id=${map.workshop_id}>)`,
+      `**State**: ${createStateField(map.state, map.name)}`,
       `**Description:** ${map.description || "N/A"}`,
-      `**Mappers:** ${mapperList}`,
+      `**Mappers:** ${createMappersField(map.mappers)}`,
     ].join("\n"),
     inline: false,
   }));
@@ -318,12 +332,21 @@ module.exports = {
         const map = await cachedFetch(`${API_URL}/maps/${search}`);
         const embed = createBaseEmbed()
           .addFields(createFields([map]))
-          .setColor(COLORS.BLUE);
+          .setColor(COLORS.GREEN);
 
         return interaction.reply({ embeds: [embed] });
       } catch (error) {
         return handleInteractionError(interaction, error);
       }
+    }
+
+    if (state && !Object.keys(STATES).includes(state)) {
+      const embed = createBaseEmbed()
+        .setDescription(
+          `Invalid state. Valid options: ${Object.keys(STATES).join(", ")}`,
+        )
+        .setColor(COLORS.RED);
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     const fetchParams = cleanParams({
