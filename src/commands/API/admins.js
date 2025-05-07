@@ -83,13 +83,13 @@ async function handlePagination(interaction, fetchParams, totalCount) {
   await interaction.deferReply();
 
   try {
-    const initialData = await cachedFetch(`${API_URL}/users`, {
+    const data = await cachedFetch(`${API_URL}/users`, {
       ...fetchParams,
       offset: 0,
       limit: ITEMS_PER_PAGE,
     });
 
-    if (!initialData?.values?.length) {
+    if (!data?.values?.length) {
       const embed = createBaseEmbed()
         .setDescription("No Admins found")
         .setColor(COLORS.RED);
@@ -103,7 +103,7 @@ async function handlePagination(interaction, fetchParams, totalCount) {
       .setDescription(
         `Page ${currentPage}/${totalPages} (Total ${totalCount} Admins)`,
       )
-      .addFields(createFields(initialData.values));
+      .addFields(createFields(data.values));
 
     const buttons = createPaginationButtons(totalPages, currentPage);
     const message = await interaction.editReply({
@@ -154,7 +154,7 @@ function setupCollector(message, user, fetchParams, totalCount) {
       i.customId === "next_page" ? currentPage + 1 : currentPage - 1;
 
     try {
-      const newData = await cachedFetch(`${API_URL}/users`, {
+      const data = await cachedFetch(`${API_URL}/users`, {
         ...fetchParams,
         offset: (newPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
@@ -165,7 +165,7 @@ function setupCollector(message, user, fetchParams, totalCount) {
         .setDescription(
           `Page ${newPage}/${totalPages} (Total ${totalCount} Admins)`,
         )
-        .addFields(createFields(newData.values));
+        .addFields(createFields(data.values));
 
       const buttons = createPaginationButtons(totalPages, newPage);
       await i.editReply({ embeds: [embed], components: [buttons] });

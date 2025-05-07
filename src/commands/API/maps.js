@@ -112,13 +112,13 @@ async function handlePagination(interaction, fetchParams, totalCount) {
   await interaction.deferReply();
 
   try {
-    const initialData = await cachedFetch(`${API_URL}/maps`, {
+    const data = await cachedFetch(`${API_URL}/maps`, {
       ...fetchParams,
       offset: 0,
       limit: ITEMS_PER_PAGE,
     });
 
-    if (!initialData?.values?.length) {
+    if (!data?.values?.length) {
       const embed = createBaseEmbed()
         .setDescription("No Maps found")
         .setColor(COLORS.RED);
@@ -132,9 +132,9 @@ async function handlePagination(interaction, fetchParams, totalCount) {
       .setDescription(
         `Page ${currentPage}/${totalPages} (Total ${totalCount} Maps)`,
       )
-      .addFields(createFields(initialData.values));
+      .addFields(createFields(data.values));
 
-    const image = `https://raw.githubusercontent.com/KZGlobalTeam/cs2kz-images/public/webp/full/${initialData?.values?.[0]?.name}/1.webp`;
+    const image = `https://raw.githubusercontent.com/KZGlobalTeam/cs2kz-images/public/webp/full/${data?.values?.[0]?.name}/1.webp`;
     const checkImage = await checkImageExists(image);
     if (checkImage && checkImage === true) {
       try {
@@ -193,7 +193,7 @@ function setupCollector(message, user, fetchParams, totalCount) {
       i.customId === "next_page" ? currentPage + 1 : currentPage - 1;
 
     try {
-      const newData = await cachedFetch(`${API_URL}/maps`, {
+      const data = await cachedFetch(`${API_URL}/maps`, {
         ...fetchParams,
         offset: (newPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
@@ -204,9 +204,9 @@ function setupCollector(message, user, fetchParams, totalCount) {
         .setDescription(
           `Page ${newPage}/${totalPages} (Total ${totalCount} Maps)`,
         )
-        .addFields(createFields(newData.values));
+        .addFields(createFields(data.values));
 
-      const image = `https://raw.githubusercontent.com/KZGlobalTeam/cs2kz-images/public/webp/full/${newData?.values?.[0]?.name}/1.webp`;
+      const image = `https://raw.githubusercontent.com/KZGlobalTeam/cs2kz-images/public/webp/full/${data?.values?.[0]?.name}/1.webp`;
       const checkImage = await checkImageExists(image);
       if (checkImage && checkImage === true) {
         try {
@@ -265,12 +265,25 @@ function createFields(maps) {
   return maps.map((map) => ({
     name: `#${map.id} ${map.name}`,
     value: [
+      `**Courses:** ${map.courses.length}`,
       `**Workshop:** [${map.workshop_id}](<https://steamcommunity.com/sharedfiles/filedetails/?id=${map.workshop_id}>)`,
       `**State**: ${createStateField(map.state, map.name)}`,
       `**Description:** ${map.description || "N/A"}`,
       `**Mappers:** ${createMappersField(map.mappers)}`,
     ].join("\n"),
     inline: false,
+  }));
+}
+
+function createCourseFields(courses) {
+  return courses.map((course, index) => ({
+    name: `#${index + 1} ${course.name}`,
+    value: [
+      `**State**: ${createStateField(course.state, course.name)}`,
+      `**Description:** ${course.description || "N/A"}`,
+      `**Mappers:** ${createMappersField(course.mappers)}`,
+    ].join("\n"),
+    inline: true,
   }));
 }
 
