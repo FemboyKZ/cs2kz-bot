@@ -7,6 +7,7 @@ require("dotenv").config();
 
 module.exports = (client) => {
   client.handleCommands = async (commandsPath) => {
+    client.commandsPath = commandsPath;
     client.commandArray = [];
     client.commands = new Map();
 
